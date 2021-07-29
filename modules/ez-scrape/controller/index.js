@@ -63,7 +63,6 @@ exports.getProductOffers = async (req, res) => {
 
 exports.searchProducts = async (req, res) => {
   const { searchKey } = req.params;
-  console.log("searchKey", searchKey);
   const { apiKey } = req.query;
   try {
     const result = await axios.get(
