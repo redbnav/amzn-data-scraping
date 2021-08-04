@@ -165,3 +165,64 @@ exports.getProductDetails = async (productId) => {
   await browser.close();
   return data;
 };
+
+exports.searchProducts = async (searchKey) => {
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.goto(`https://www.amazon.com/s?k=${searchKey}`);
+
+  // need to optimise code here
+  const searchResults = await page.$$eval(".s-result-item.s-asin", (ele) =>
+    ele.map((e) => ({
+      type: Array.from(e.classList).includes("AdHolder")
+        ? "sponsored_product"
+        : "search_product",
+      availability_quantity: null,
+      has_prime: e.querySelector(".s-prime .a-icon-prime") ? true : false,
+      image: e.querySelector("img").src ? e.querySelector("img").src : "",
+      is_amazon_choice: e.querySelector(`[aria-label*="Choice"`) ? true : false,
+      is_limited_deal: e.querySelector("[id*='BEST_DEAL_'") ? true : false,
+      is_best_seller: null, // TODO
+      name: e.querySelector("h2>a>span")
+        ? e.querySelector("h2>a>span").innerHTML
+        : "",
+      price: e.querySelector(".a-price>span")
+        ? e.querySelector(".a-price>span").innerText.replace(/[$]/g, "")
+        : "",
+      price_string: e.querySelector(".a-price>span")
+        ? e.querySelector(".a-price>span").innerText
+        : "",
+      price_symbol: e.querySelector(".a-price-symbol")
+        ? e.querySelector(".a-price-symbol").innerText
+        : "",
+      spec: {},
+      stars: e.querySelector(".a-row.a-size-small .a-declarative")
+        ? e
+            .querySelector(".a-row.a-size-small .a-declarative")
+            .innerText.split(" ")[0]
+        : "",
+      total_reviews: e.querySelector(".a-row.a-size-small .a-size-base")
+        ? e.querySelector(".a-row.a-size-small .a-size-base").innerText
+        : "",
+      url: e.querySelector("h2>a") ? e.querySelector("h2>a").href : "",
+    }))
+  );
+  const pagesEle = await page.$$eval(".s-result-item .a-pagination li", (e) =>
+    e.map((l) => l.innerText).filter((l) => !isNaN(l))
+  );
+  const pageLink = await page.$eval(
+    ".s-result-item .a-pagination li.a-selected",
+    (e) => e.querySelector("a").href
+  );
+
+  const pages = [];
+  for (let i = 1; i <= pagesEle[pagesEle.length - 1]; i++) {
+    pages.push(`${pageLink}&page=${i}`);
+  }
+  browser.close();
+  return {
+    results: searchResults.filter((e) => e.type === "search_product"),
+    ads: searchResults.filter((e) => e.type === "sponsored_product"),
+    pages,
+  };
+};
