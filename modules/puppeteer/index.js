@@ -1,4 +1,4 @@
-const puppeteer = require("puppeteer");
+const puppeteer = require("puppeteer-extra");
 
 exports.getProductDetails = async (productId) => {
   let data = {};
@@ -182,7 +182,7 @@ exports.searchProducts = async (searchKey) => {
       image: e.querySelector("img").src ? e.querySelector("img").src : "",
       is_amazon_choice: e.querySelector(`[aria-label*="Choice"`) ? true : false,
       is_limited_deal: e.querySelector("[id*='BEST_DEAL_'") ? true : false,
-      is_best_seller: null, // TODO
+      is_best_seller: null,
       name: e.querySelector("h2>a>span")
         ? e.querySelector("h2>a>span").innerHTML
         : "",
@@ -225,4 +225,209 @@ exports.searchProducts = async (searchKey) => {
     ads: searchResults.filter((e) => e.type === "sponsored_product"),
     pages,
   };
+};
+
+exports.getProductReviews = async (productId) => {
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.goto(`https://www.amazon.com/product-reviews/${productId}`);
+
+  // TODO optimize code, write different functions to create data sets
+
+  const productEle = await page.$$eval(
+    "[role='main'] #cm_cr-product_info",
+    (ele) =>
+      ele.map((e) => ({
+        average_rating: e.querySelector("[data-hook=rating-out-of-text]")
+          ? e
+              .querySelector("[data-hook=rating-out-of-text]")
+              .innerText.split(" ")[0]
+          : "",
+        total_ratings: e.querySelector("[data-hook=total-review-count]")
+          ? e
+              .querySelector("[data-hook=total-review-count]")
+              .innerText.split(" ")[0]
+          : "",
+        filtered_total_ratings: e.querySelector(
+          "[data-hook=total-review-count]"
+        )
+          ? e
+              .querySelector("[data-hook=total-review-count]")
+              .innerText.split(" ")[0]
+          : "",
+        product: {
+          url: e.querySelector(".product-title a")
+            ? e.querySelector(".product-title a").href
+            : "",
+          name: e.querySelector(".product-title a")
+            ? e.querySelector(".product-title a").innerText
+            : "",
+          brand: e.querySelector(".product-by-line a")
+            ? e.querySelector(".product-by-line a").innerText
+            : "",
+          price: null,
+          image: e.querySelector(".product-image a img")
+            ? e.querySelector(".product-image a img").src
+            : "",
+          variation: e.querySelector(
+            ".product-variation-strip .a-color-secondary"
+          )
+            ? JSON.parse(
+                "{" +
+                  e
+                    .querySelector(
+                      ".product-variation-strip .a-color-secondary"
+                    )
+                    .innerHTML.split(
+                      '<i class="a-icon a-icon-text-separator" role="img" aria-label="|"></i>'
+                    )
+                    .map((e) => e.replace(/([a-z,A-Z, 0-9]+)/g, '"$1"'))
+                    .join(",") +
+                  "}"
+              )
+            : {},
+        },
+      }))
+  );
+
+  const detainledRating = await page.$$eval(".a-histogram-row", (ele) =>
+    ele.map((e, i) => ({
+      [e.querySelector("tr a")
+        ? `${e.querySelector("tr a").innerText}ratings`.replace(/ /g, "_")
+        : `${ele.length - i}_star_rating`]: Math.floor(
+        parseFloat(
+          e
+            .querySelector("[role='progressbar']")
+            .getAttribute("aria-valuenow")
+            .replace("%", "") / 100
+        ) *
+          parseInt(
+            document
+              .querySelector(".averageStarRatingNumerical")
+              .innerText.split(" ")[0]
+              .replace(",", "")
+          )
+      ),
+      [e.querySelector("tr a")
+        ? `${e.querySelector("tr a").innerText}percentage`.replace(/ /g, "_")
+        : `${ele.length - i}_star_percentage`]: parseFloat(
+        e
+          .querySelector("[role='progressbar']")
+          .getAttribute("aria-valuenow")
+          .replace("%", "") / 100
+      ),
+    }))
+  );
+
+  const viewPointReviews = await page.$$eval(".view-point-review", (ele) =>
+    ele.map((e) => ({
+      [Array.from(e.classList).includes("positive-review")
+        ? "top_positive_review"
+        : "top_critical_review"]: {
+        stars: e.querySelector(".review-rating")
+          ? e.querySelector(".review-rating").innerText.split(" ")[0]
+          : "",
+        date: e.querySelector(".review-date")
+          ? e.querySelector(".review-date").innerText
+          : "",
+        verified_purchase: "",
+        manufacturer_replied: "",
+        username: e.querySelector(".a-profile-name")
+          ? e.querySelector(".a-profile-name").innerText
+          : "",
+        userUrl: e.querySelector(".a-profile")
+          ? e.querySelector(".a-profile").href
+          : "",
+        title: e.querySelector(".review-title")
+          ? e.querySelector(".review-title").innerText
+          : "",
+        review: e.querySelector(".a-spacing-top-mini .a-size-base")
+          ? e.querySelector(".a-spacing-top-mini .a-size-base").innerText
+          : "",
+        reviewUrl: e.querySelector(`[aria-label="Toggle full review text"]`)
+          ? e.querySelector(`[aria-label="Toggle full review text"]`).href
+          : "",
+        total_found_helpful: e.querySelector(`.review-votes`)
+          ? e.querySelector(`.review-votes`).innerText.split(" ")[0]
+          : "",
+        images: e.querySelectorAll(".review-image-container img")
+          ? Array.from(e.querySelectorAll(".review-image-container img")).map(
+              (e) => e.src
+            )
+          : [],
+        variation: e.querySelector(".review-format-strip a")
+          ? JSON.parse(
+              "{" +
+                e
+                  .querySelector(".review-format-strip a")
+                  .innerHTML.split(
+                    '<i class="a-icon a-icon-text-separator" role="img" aria-label="|"></i>'
+                  )
+                  .map((e) => e.replace(/([a-z,A-Z, 0-9]+)/g, '"$1"'))
+                  .join(",") +
+                "}"
+            )
+          : {},
+        videoUrl: null,
+      },
+    }))
+  );
+
+  const reviews = await page.$$eval(".review", (ele) =>
+    ele.map((e) => ({
+      stars: e.querySelector(".review-rating")
+        ? e.querySelector(".review-rating").innerText.split(" ")[0]
+        : "",
+      date: e.querySelector(".review-date")
+        ? e.querySelector(".review-date").innerText
+        : "",
+      verified_purchase: "",
+      manufacturer_replied: "",
+      username: e.querySelector(".a-profile-name")
+        ? e.querySelector(".a-profile-name").innerText
+        : "",
+      userUrl: e.querySelector(".a-profile")
+        ? e.querySelector(".a-profile").href
+        : "",
+      title: e.querySelector(".review-title")
+        ? e.querySelector(".review-title").innerText
+        : "",
+      review: e.querySelector(".a-spacing-top-mini .a-size-base")
+        ? e.querySelector(".a-spacing-top-mini .a-size-base").innerText
+        : "",
+      reviewUrl: e.querySelector(`[aria-label="Toggle full review text"]`)
+        ? e.querySelector(`[aria-label="Toggle full review text"]`).href
+        : "",
+      total_found_helpful: e.querySelector(`.review-votes`)
+        ? e.querySelector(`.review-votes`).innerText.split(" ")[0]
+        : "",
+      images: e.querySelectorAll(".review-image-container img")
+        ? Array.from(e.querySelectorAll(".review-image-container img")).map(
+            (e) => e.src
+          )
+        : [],
+      variation: e.querySelector(".review-format-strip a")
+        ? JSON.parse(
+            "{" +
+              e
+                .querySelector(".review-format-strip a")
+                .innerHTML.split(
+                  '<i class="a-icon a-icon-text-separator" role="img" aria-label="|"></i>'
+                )
+                .map((e) => e.replace(/([a-z,A-Z, 0-9]+)/g, '"$1"'))
+                .join(",") +
+              "}"
+          )
+        : {},
+      videoUrl: null,
+    }))
+  );
+
+  let data = productEle[0];
+  Object.assign(data, ...detainledRating);
+  Object.assign(data, ...viewPointReviews);
+  data["reviews"] = reviews;
+
+  browser.close();
+  return data;
 };

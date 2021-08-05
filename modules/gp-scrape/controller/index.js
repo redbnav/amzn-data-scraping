@@ -1,6 +1,9 @@
 const { default: axios } = require("axios");
-const puppeteer = require("puppeteer");
-const { getProductDetails, searchProducts } = require("../../puppeteer");
+const {
+  getProductDetails,
+  searchProducts,
+  getProductReviews,
+} = require("../../puppeteer");
 // get product info, data format same as scraper API
 
 exports.getProducts = async (req, res) => {
@@ -20,5 +23,15 @@ exports.searchProducts = async (req, res) => {
     res.status(200).json({ message: "search results", data });
   } catch (e) {
     res.status(404).json({ message: "search failed" });
+  }
+};
+
+exports.getProductReviews = async (req, res) => {
+  const { productId } = req.params;
+  try {
+    const data = await getProductReviews(productId);
+    res.status(200).json({ message: "product review results", data });
+  } catch (e) {
+    res.status(404).json({ message: "failed to fetch review" });
   }
 };

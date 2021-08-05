@@ -5,7 +5,6 @@ const { generateEZScraperURL } = require("../../utils");
 exports.getProducts = async (req, res) => {
   const { productId } = req.params;
   const { apiKey } = req.query;
-  console.log(productId, apiKey);
   try {
     const result = await axios.get(
       `${generateEZScraperURL(apiKey)}&url=https://amazon.com/dp/${productId}`
@@ -13,7 +12,6 @@ exports.getProducts = async (req, res) => {
     const data = result.data;
     res.status(200).json({ message: "requested product data", data });
   } catch (e) {
-    console.log("e", e);
     res.status(404).json({ message: "data not found" });
   }
 };
@@ -24,11 +22,6 @@ exports.getProductReviews = async (req, res) => {
   const { apiKey } = req.query;
 
   try {
-    console.log(
-      `${generateEZScraperURL(
-        apiKey
-      )}&url=https://amazon.com/product-reviews/${productId}`
-    );
     const result = await axios.get(
       `${generateEZScraperURL(
         apiKey
@@ -38,7 +31,6 @@ exports.getProductReviews = async (req, res) => {
     const data = result.data;
     res.status(200).json({ message: "requested product review data", data });
   } catch (e) {
-    console.log("e", e);
     res.status(404).json({ message: "data not found" });
   }
 };
@@ -56,7 +48,6 @@ exports.getProductOffers = async (req, res) => {
     const data = result.data;
     res.status(200).json({ message: "requested product offers data", data });
   } catch (e) {
-    console.log("e", e);
     res.status(404).json({ message: "data not found" });
   }
 };
@@ -71,7 +62,6 @@ exports.searchProducts = async (req, res) => {
     const data = result.data;
     res.status(200).json({ message: "requested product offers data", data });
   } catch (e) {
-    console.log("e", e);
     res.status(404).json({ message: "data not found" });
   }
 };
